@@ -89,7 +89,14 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   if (!u) throw redirect({ to: "/login" });
   const sql = getSql();
 
-  const checkIns = (await sql`SELECT day FROM check_ins WHERE user_id = ${u.id} ORDER BY day DESC LIMIT 120`) as any[];
+  const [checkIns, memberships, lastWorkout, lastDiet, progress] = await Promise.all([
+    sql`SELECT day FROM check_ins WHERE user_id = ${u.id} ORDER BY day DESC LIMIT 120` as Promise<any[]>,
+    sql`SELECT * FROM memberships WHERE user_id = ${u.id} AND ends_at > NOW() ORDER BY ends_at DESC LIMIT 1` as Promise<any[]>,
+    sql`SELECT id, goal, created_at FROM workout_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1` as Promise<any[]>,
+    sql`SELECT id, goal, data, created_at FROM diet_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1` as Promise<any[]>,
+    sql`SELECT day, weight_kg, body_fat, muscle_mass FROM progress_entries WHERE user_id = ${u.id} ORDER BY day ASC LIMIT 60` as Promise<any[]>,
+  ]);
+
   const days = checkIns.map((c) => new Date(c.day).toISOString().slice(0, 10));
   const set = new Set(days);
 
@@ -108,13 +115,6 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthCount = days.filter((d) => new Date(d) >= monthStart).length;
   const consistency = Math.min(100, Math.round((monthCount / Math.max(1, today.getDate())) * 100));
-
-  const memberships = (await sql`SELECT * FROM memberships WHERE user_id = ${u.id} AND ends_at > NOW() ORDER BY ends_at DESC LIMIT 1`) as any[];
-
-  const lastWorkout = (await sql`SELECT id, goal, created_at FROM workout_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1`) as any[];
-  const lastDiet = (await sql`SELECT id, goal, data, created_at FROM diet_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1`) as any[];
-
-  const progress = (await sql`SELECT day, weight_kg, body_fat, muscle_mass FROM progress_entries WHERE user_id = ${u.id} ORDER BY day ASC LIMIT 60`) as any[];
 
   const bmi =
     u.height_cm && u.weight_kg
@@ -418,8 +418,10 @@ export const listPlansFn = createServerFn({ method: "GET" }).handler(async () =>
   const u = await getCurrentUser();
   if (!u) throw redirect({ to: "/login" });
   const sql = getSql();
-  const workouts = (await sql`SELECT id, goal, data, created_at FROM workout_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 20`) as any[];
-  const diets = (await sql`SELECT id, goal, data, created_at FROM diet_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 20`) as any[];
+  const [workouts, diets] = await Promise.all([
+    sql`SELECT id, goal, data, created_at FROM workout_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 20` as Promise<any[]>,
+    sql`SELECT id, goal, data, created_at FROM diet_plans WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 20` as Promise<any[]>,
+  ]);
   return { workouts, diets };
 });
 
@@ -472,7 +474,9 @@ export const myBookingsFn = createServerFn({ method: "GET" }).handler(async () =
   const u = await getCurrentUser();
   if (!u) throw redirect({ to: "/login" });
   const sql = getSql();
-  const bookings = (await sql`SELECT * FROM trainer_bookings WHERE user_id = ${u.id} ORDER BY created_at DESC`) as any[];
-  const memberships = (await sql`SELECT * FROM memberships WHERE user_id = ${u.id} ORDER BY created_at DESC`) as any[];
+  const [bookings, memberships] = await Promise.all([
+    sql`SELECT * FROM trainer_bookings WHERE user_id = ${u.id} ORDER BY created_at DESC` as Promise<any[]>,
+    sql`SELECT * FROM memberships WHERE user_id = ${u.id} ORDER BY created_at DESC` as Promise<any[]>,
+  ]);
   return { bookings, memberships };
 });

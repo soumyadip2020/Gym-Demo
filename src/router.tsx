@@ -4,14 +4,22 @@ import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+    defaultOptions: {
+      queries: {
+        staleTime: 60_000,
+        gcTime: 10 * 60_000,
+        refetchOnWindowFocus: false,
+        retry: 1,
+      },
+    },
   });
 
   const router = createRouter({
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreload: "intent",
+    defaultPreloadStaleTime: 30_000,
   });
 
   return router;

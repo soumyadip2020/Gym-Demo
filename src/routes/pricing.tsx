@@ -47,8 +47,10 @@ function PricingPage() {
               <motion.div 
                 key={p.id}
                 initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -6 }}
+                viewport={{ once: false, amount: 0.12 }}
+                transition={{ duration: 0.45, delay: i * 0.08 }}
                 className={`relative group bg-zinc-950 rounded-[3rem] p-10 border transition-all duration-500 flex flex-col text-left ${p.highlight ? "border-primary shadow-[0_30px_100px_rgba(var(--primary),0.1)] ring-1 ring-primary/20" : "border-white/5 hover:border-white/20"}`}
               >
                 {p.highlight && (

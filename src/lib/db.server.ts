@@ -284,66 +284,71 @@ export async function ensureSchema() {
       gender TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`;
-    await sql`CREATE TABLE IF NOT EXISTS sessions (
-      token TEXT PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS memberships (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      plan TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active',
-      starts_at TIMESTAMPTZ DEFAULT NOW(),
-      ends_at TIMESTAMPTZ NOT NULL,
-      auto_renew BOOLEAN DEFAULT true,
-      amount_inr NUMERIC,
-      razorpay_payment_id TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS check_ins (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      day DATE NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE(user_id, day)
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS workout_plans (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      goal TEXT NOT NULL,
-      data JSONB NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS diet_plans (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      goal TEXT NOT NULL,
-      data JSONB NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS progress_entries (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      day DATE NOT NULL DEFAULT CURRENT_DATE,
-      weight_kg NUMERIC,
-      body_fat NUMERIC,
-      muscle_mass NUMERIC,
-      notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS trainer_bookings (
-      id SERIAL PRIMARY KEY,
-      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      trainer_slug TEXT NOT NULL,
-      plan TEXT NOT NULL,
-      starts_at TIMESTAMPTZ DEFAULT NOW(),
-      ends_at TIMESTAMPTZ NOT NULL,
-      amount_inr NUMERIC,
-      razorpay_payment_id TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-  })();
+    await Promise.all([
+      sql`CREATE TABLE IF NOT EXISTS sessions (
+        token TEXT PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS memberships (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        starts_at TIMESTAMPTZ DEFAULT NOW(),
+        ends_at TIMESTAMPTZ NOT NULL,
+        auto_renew BOOLEAN DEFAULT true,
+        amount_inr NUMERIC,
+        razorpay_payment_id TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS check_ins (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day DATE NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, day)
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS workout_plans (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        goal TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS diet_plans (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        goal TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS progress_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day DATE NOT NULL DEFAULT CURRENT_DATE,
+        weight_kg NUMERIC,
+        body_fat NUMERIC,
+        muscle_mass NUMERIC,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS trainer_bookings (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        trainer_slug TEXT NOT NULL,
+        plan TEXT NOT NULL,
+        starts_at TIMESTAMPTZ DEFAULT NOW(),
+        ends_at TIMESTAMPTZ NOT NULL,
+        amount_inr NUMERIC,
+        razorpay_payment_id TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+    ]);
+  })().catch((err) => {
+    _initPromise = null;
+    throw err;
+  });
   return _initPromise;
 }

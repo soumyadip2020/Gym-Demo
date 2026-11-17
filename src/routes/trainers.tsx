@@ -40,9 +40,11 @@ function TrainersPage() {
             {TRAINERS.map((t, i) => (
               <motion.div 
                 key={t.slug}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1 }}
+                initial={{ opacity: 0, y: 28, scale: 0.96 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                whileHover={{ y: -6 }}
+                viewport={{ once: false, amount: 0.12 }}
+                transition={{ duration: 0.45, delay: (i % 3) * 0.08 }}
                 className="group bg-zinc-950 border border-white/5 rounded-[3rem] p-10 hover:border-primary/50 transition-all duration-500 text-left relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:text-primary/5 transition-all duration-700">

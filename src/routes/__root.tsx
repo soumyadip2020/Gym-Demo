@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { Preloader } from "@/components/site/Preloader";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -79,6 +80,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
+      <Preloader />
       <Outlet />
       <Toaster theme="dark" position="top-right" richColors />
     </QueryClientProvider>

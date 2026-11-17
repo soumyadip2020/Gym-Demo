@@ -83,6 +83,7 @@
 .dark { color-scheme: dark; }
 
 @layer base {
+  html { scroll-behavior: smooth; }
   html, body { background: var(--background); color: var(--foreground); }
   * { border-color: var(--color-border); }
   body {

@@ -1,13 +1,18 @@
-import { createFileRoute, Outlet, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { LayoutDashboard, Calendar, Dumbbell, Apple, LineChart, CreditCard, UserCog, LogOut, Menu, X } from "lucide-react";
-import { logoutFn, meFn } from "@/lib/server-fns";
+import { dashboardFn, listPlansFn, logoutFn, meFn, progressFn } from "@/lib/server-fns";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
-    const { user } = await meFn();
+  beforeLoad: async ({ context }) => {
+    const { user } = await context.queryClient.ensureQueryData({
+      queryKey: ["me"],
+      queryFn: () => meFn(),
+      staleTime: 5 * 60_000,
+    });
     if (!user) throw redirect({ to: "/login" });
     return { user };
   },
@@ -27,8 +32,20 @@ const nav = [
 function AppShell() {
   const { user } = Route.useRouteContext() as any;
   const logout = useServerFn(logoutFn);
+  const fetchDash = useServerFn(dashboardFn);
+  const fetchPlans = useServerFn(listPlansFn);
+  const fetchProg = useServerFn(progressFn);
+  const qc = useQueryClient();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+
+  // Warm dashboard section caches in the background so sidebar navigation is instant
+  useEffect(() => {
+    void qc.prefetchQuery({ queryKey: ["dashboard"], queryFn: () => fetchDash() });
+    void qc.prefetchQuery({ queryKey: ["plans"], queryFn: () => fetchPlans() });
+    void qc.prefetchQuery({ queryKey: ["progress"], queryFn: () => fetchProg() });
+  }, [qc, fetchDash, fetchPlans, fetchProg]);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-primary selection:text-black flex flex-col md:flex-row overflow-hidden">
@@ -50,6 +67,7 @@ function AppShell() {
               <Link 
                 key={n.to} 
                 to={n.to} 
+                preload="intent"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-4 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] italic text-white/40 hover:text-primary hover:bg-white/5 transition-all duration-300 group"
                 activeProps={{ className: "flex items-center gap-4 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] italic text-primary bg-primary/5 border border-primary/10" }}
@@ -71,7 +89,12 @@ function AppShell() {
               </div>
             </div>
             <button 
-              onClick={async () => { await logout({}); navigate({ to: "/" }); }} 
+              onClick={async () => {
+                await logout({});
+                await qc.cancelQueries();
+                qc.clear();
+                navigate({ to: "/" });
+              }} 
               className="w-full flex items-center justify-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic text-white/40 hover:text-red-500 hover:bg-red-500/5 transition-all"
             >
               <LogOut className="w-4 h-4" /> Sign Out
@@ -95,9 +118,15 @@ function AppShell() {
 
         {/* Content Wrapper */}
         <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar">
-          <div className="max-w-6xl mx-auto w-full">
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-6xl mx-auto w-full"
+          >
             <Outlet />
-          </div>
+          </motion.div>
         </div>
       </main>
 

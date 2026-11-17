@@ -1,17 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+import { useRef } from "react";
 import {
   Activity, Dumbbell, Heart, Zap, Check, ArrowRight, Star,
-  Smartphone, Trophy, Users, Shield, MapPin, Instagram, Twitter, Linkedin, Facebook
 } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
+const sectionViewport = { once: false, amount: 0.12 } as const;
+const easeSmooth = [0.22, 1, 0.36, 1] as const;
+
 function Landing() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 180,
+    damping: 30,
+    restDelta: 0.001,
+  });
+
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-primary selection:text-black">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-primary selection:text-black overflow-x-clip">
+      <motion.div
+        style={{ scaleX }}
+        className="fixed top-0 left-0 right-0 h-[3px] bg-primary origin-left z-[60] shadow-[0_0_16px_rgba(168,225,11,0.9)]"
+      />
       <Navbar />
       <Hero />
       <BrandLogos />
@@ -28,25 +42,38 @@ function Landing() {
 }
 
 function Hero() {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
+  const bgScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.85], [1, 0.15]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, 60]);
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src="/images/gym-bg.jpg" 
-          alt="Cybernetic Gym" 
+    <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Background Image with Parallax */}
+      <motion.div style={{ y: bgY, scale: bgScale }} className="absolute inset-0 z-0 will-change-transform">
+        <img
+          src="/images/gym-bg.jpg"
+          alt="Cybernetic Gym"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
         <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-      </div>
-      
-      <div className="mx-auto max-w-7xl px-6 relative z-10 w-full text-center">
+      </motion.div>
+
+      <motion.div
+        style={{ opacity: contentOpacity, y: contentY }}
+        className="mx-auto max-w-7xl px-6 relative z-10 w-full text-center"
+      >
         {/* Headline */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.8, ease: easeSmooth }}
           className="font-display text-5xl md:text-9xl font-black tracking-tighter uppercase italic leading-[0.85] mb-12 drop-shadow-2xl"
         >
           <div className="flex flex-wrap justify-center items-center gap-x-6 drop-shadow-[0_5px_15px_rgba(0,0,0,1)]">
@@ -61,20 +88,20 @@ function Hero() {
           </div>
         </motion.div>
 
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 1 }}
+          transition={{ delay: 0.4, duration: 0.8 }}
           className="max-w-2xl mx-auto text-white/40 font-black uppercase tracking-[0.3em] text-[10px] md:text-xs mb-16 italic"
         >
           Elite AI-Driven Fitness Ecosystem for High-Performance Athletes
         </motion.p>
-        
+
         {/* CTA Buttons */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.6, duration: 0.6, ease: easeSmooth }}
           className="flex flex-col sm:flex-row justify-center items-center gap-6"
         >
           <Link to="/signup" className="bg-primary text-black px-16 py-7 rounded-full font-black uppercase tracking-[0.4em] italic text-sm hover:scale-110 transition-all duration-500 shadow-[0_20px_80px_rgba(var(--primary),0.5)] flex items-center gap-4">
@@ -84,7 +111,7 @@ function Hero() {
             VIEW PLANS
           </Link>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -94,11 +121,18 @@ function BrandLogos() {
   return (
     <section className="py-32 border-y border-white/5 bg-zinc-950/50">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="flex flex-wrap justify-center md:justify-between items-center gap-12 opacity-30">
-          {brands.map(b => (
-            <span key={b} className="text-3xl font-black uppercase tracking-tighter italic text-white hover:opacity-100 transition duration-500 cursor-default">
+        <div className="flex flex-wrap justify-center md:justify-between items-center gap-12 opacity-40">
+          {brands.map((b, i) => (
+            <motion.span
+              key={b}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={sectionViewport}
+              transition={{ duration: 0.45, delay: i * 0.06, ease: easeSmooth }}
+              className="text-3xl font-black uppercase tracking-tighter italic text-white hover:text-primary hover:opacity-100 transition duration-500 cursor-default"
+            >
               {b}
-            </span>
+            </motion.span>
           ))}
         </div>
       </div>
@@ -113,13 +147,18 @@ function InspiredSection() {
     "Advanced Progress Tracking",
     "Motivation & Accountability",
     "Community Support",
-    "High-End Fitness Equipment"
+    "High-End Fitness Equipment",
   ];
   return (
-    <section className="py-32 bg-black relative">
+    <section className="py-32 bg-black relative overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid md:grid-cols-2 gap-20 items-center">
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: -32 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={sectionViewport}
+            transition={{ duration: 0.65, ease: easeSmooth }}
+          >
             <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic leading-none tracking-tighter">
               Inspired to<br />
               <span className="text-primary">Inspire Your</span> Best Self
@@ -128,20 +167,33 @@ function InspiredSection() {
               We provide the tools, the community, and the expertise to help you break through your limits and achieve the physique you've always dreamed of.
             </p>
             <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {points.map(p => (
-                <div key={p} className="flex items-center gap-3">
+              {points.map((p, i) => (
+                <motion.div
+                  key={p}
+                  initial={{ opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={sectionViewport}
+                  transition={{ duration: 0.4, delay: i * 0.06, ease: easeSmooth }}
+                  className="flex items-center gap-3"
+                >
                   <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                     <Check className="w-3 h-3 text-primary" />
                   </div>
                   <span className="text-sm font-bold uppercase tracking-wider text-white/70">{p}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
-          <div className="relative">
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, x: 32 }}
+            whileInView={{ opacity: 1, scale: 1, x: 0 }}
+            viewport={sectionViewport}
+            transition={{ duration: 0.7, ease: easeSmooth }}
+            className="relative"
+          >
             <div className="absolute -inset-4 border-2 border-primary/20 rounded-3xl" />
             <img src="/images/inspired.png" alt="Inspiration" className="rounded-2xl grayscale hover:grayscale-0 transition-all duration-700 relative z-10" />
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -158,13 +210,27 @@ function FeaturesGrid() {
   return (
     <section className="py-32 bg-zinc-950">
       <div className="mx-auto max-w-7xl px-6 text-center">
-        <h2 className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter">
+        <motion.h2
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={sectionViewport}
+          transition={{ duration: 0.6, ease: easeSmooth }}
+          className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter"
+        >
           Discover<br />
           <span className="text-primary">What Sets Us</span> Apart
-        </h2>
+        </motion.h2>
         <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((f, i) => (
-            <div key={i} className="group bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 hover:border-primary/50 transition-all duration-500 text-left flex flex-col justify-between min-h-[350px]">
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 36 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -8 }}
+              viewport={sectionViewport}
+              transition={{ duration: 0.5, delay: i * 0.08, ease: easeSmooth }}
+              className="group bg-zinc-900 p-10 rounded-[2.5rem] border border-white/5 hover:border-primary/50 transition-colors duration-500 text-left flex flex-col justify-between min-h-[350px]"
+            >
               <div>
                 <div className="w-16 h-16 bg-zinc-800 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-colors duration-500">
                   {f.icon}
@@ -174,10 +240,10 @@ function FeaturesGrid() {
                   {f.desc}
                 </p>
               </div>
-              <button className="mt-8 bg-zinc-800 text-primary py-3 rounded-xl font-black uppercase tracking-[0.2em] italic text-[10px] group-hover:bg-primary group-hover:text-black transition-colors duration-500">
+              <Link to="/pricing" className="mt-8 bg-zinc-800 text-primary py-3 rounded-xl font-black uppercase tracking-[0.2em] italic text-[10px] group-hover:bg-primary group-hover:text-black transition-colors duration-500 text-center">
                 Explore
-              </button>
-            </div>
+              </Link>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -197,19 +263,32 @@ function WorkoutGrid() {
   return (
     <section className="py-32 bg-black">
       <div className="mx-auto max-w-7xl px-6 text-center">
-        <h2 className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter">
+        <motion.h2
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={sectionViewport}
+          transition={{ duration: 0.6, ease: easeSmooth }}
+          className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter"
+        >
           Train Smarter<br />
           <span className="text-primary">Unleash Your</span> Potential
-        </h2>
+        </motion.h2>
         <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
           {workouts.map((w, i) => (
-            <div key={i} className="group relative overflow-hidden rounded-[2rem]">
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 36, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={sectionViewport}
+              transition={{ duration: 0.55, delay: (i % 3) * 0.08, ease: easeSmooth }}
+              className="group relative overflow-hidden rounded-[2rem]"
+            >
               <img src={w.img} alt={w.title} className="w-full aspect-[4/5] object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
               <div className="absolute bottom-8 left-8 text-left">
                 <h3 className="text-2xl font-black uppercase italic tracking-tight group-hover:text-primary transition-colors">{w.title}</h3>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -219,14 +298,26 @@ function WorkoutGrid() {
 
 function ExperienceSection() {
   return (
-    <section className="py-32 bg-zinc-950">
+    <section className="py-32 bg-zinc-950 overflow-hidden">
       <div className="mx-auto max-w-7xl px-6 text-center">
-        <h2 className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter">
+        <motion.h2
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={sectionViewport}
+          transition={{ duration: 0.6, ease: easeSmooth }}
+          className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter"
+        >
           Experience<br />
           <span className="text-primary">Fitness Like</span> Never Before
-        </h2>
+        </motion.h2>
         <div className="mt-20 grid md:grid-cols-2 gap-8">
-          <div className="relative group overflow-hidden rounded-[3rem] aspect-[16/10] bg-zinc-900 border border-white/5">
+          <motion.div
+            initial={{ opacity: 0, x: -32 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={sectionViewport}
+            transition={{ duration: 0.6, ease: easeSmooth }}
+            className="relative group overflow-hidden rounded-[3rem] aspect-[16/10] bg-zinc-900 border border-white/5"
+          >
             <img src="/images/workout-1.png" className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover:opacity-60 transition duration-700" />
             <div className="relative p-12 text-left h-full flex flex-col justify-between">
               <div>
@@ -235,12 +326,18 @@ function ExperienceSection() {
                   Our facility is equipped with state-of-the-art machines and professional tracking systems.
                 </p>
               </div>
-              <button className="self-start bg-primary text-black px-10 py-4 rounded-full font-black uppercase tracking-widest italic text-[11px] hover:scale-105 transition-transform">
+              <Link to="/signup" className="self-start bg-primary text-black px-10 py-4 rounded-full font-black uppercase tracking-widest italic text-[11px] hover:scale-105 transition-transform">
                 Get Started
-              </button>
+              </Link>
             </div>
-          </div>
-          <div className="relative group overflow-hidden rounded-[3rem] aspect-[16/10] bg-zinc-900 border border-white/5">
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 32 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={sectionViewport}
+            transition={{ duration: 0.6, delay: 0.1, ease: easeSmooth }}
+            className="relative group overflow-hidden rounded-[3rem] aspect-[16/10] bg-zinc-900 border border-white/5"
+          >
             <img src="/images/workout-2.png" className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover:opacity-60 transition duration-700" />
             <div className="relative p-12 text-left h-full flex flex-col justify-between">
               <div>
@@ -249,11 +346,11 @@ function ExperienceSection() {
                   Join a network of dedicated athletes and fitness enthusiasts pushing each other daily.
                 </p>
               </div>
-              <button className="self-start bg-primary text-black px-10 py-4 rounded-full font-black uppercase tracking-widest italic text-[11px] hover:scale-105 transition-transform">
+              <Link to="/signup" className="self-start bg-primary text-black px-10 py-4 rounded-full font-black uppercase tracking-widest italic text-[11px] hover:scale-105 transition-transform">
                 Join Us
-              </button>
+              </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -269,20 +366,34 @@ function TrainersSection() {
   return (
     <section className="py-32 bg-black">
       <div className="mx-auto max-w-7xl px-6 text-center">
-        <h2 className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter">
+        <motion.h2
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={sectionViewport}
+          transition={{ duration: 0.6, ease: easeSmooth }}
+          className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter"
+        >
           Your Fitness<br />
           <span className="text-primary">Goals, Their</span> Expertise
-        </h2>
+        </motion.h2>
         <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
           {trainers.map((t, i) => (
-            <div key={i} className="group text-left">
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 36 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -6 }}
+              viewport={sectionViewport}
+              transition={{ duration: 0.55, delay: i * 0.1, ease: easeSmooth }}
+              className="group text-left"
+            >
               <div className="relative overflow-hidden rounded-[2.5rem] aspect-[4/5] bg-zinc-900">
                 <img src={t.img} alt={t.name} className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700" />
                 <div className="absolute inset-0 border-[12px] border-black/50 pointer-events-none" />
               </div>
               <h3 className="mt-8 text-2xl font-black uppercase italic tracking-tight">{t.name}</h3>
               <p className="mt-1 text-primary font-black uppercase tracking-widest text-[10px]">{t.role}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -294,14 +405,26 @@ function SuccessStories() {
   return (
     <section className="py-32 bg-zinc-950 overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
-        <h2 className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-center">
+        <motion.h2
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={sectionViewport}
+          transition={{ duration: 0.6, ease: easeSmooth }}
+          className="font-display text-4xl md:text-6xl font-black uppercase italic tracking-tighter text-center"
+        >
           Your Success<br />
           <span className="text-primary">Stories, Our</span> Inspiration
-        </h2>
-        
+        </motion.h2>
+
         <div className="mt-20 relative">
           <div className="grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7 relative h-[600px] rounded-[3rem] overflow-hidden group">
+            <motion.div
+              initial={{ opacity: 0, x: -32 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={sectionViewport}
+              transition={{ duration: 0.65, ease: easeSmooth }}
+              className="lg:col-span-7 relative h-[600px] rounded-[3rem] overflow-hidden group"
+            >
               <img src="/images/success.png" className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 transition-all duration-1000" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
               <div className="absolute bottom-12 left-12 right-12">
@@ -313,10 +436,17 @@ function SuccessStories() {
                 </blockquote>
                 <p className="mt-6 font-bold uppercase tracking-widest text-primary">— Alex Thompson</p>
               </div>
-            </div>
+            </motion.div>
             <div className="lg:col-span-5 grid grid-cols-1 gap-6">
               {[1, 2].map(i => (
-                <div key={i} className="bg-zinc-900 rounded-[2rem] p-8 border border-white/5 flex gap-6 items-center group hover:border-primary/30 transition">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 32 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={sectionViewport}
+                  transition={{ duration: 0.55, delay: i * 0.1, ease: easeSmooth }}
+                  className="bg-zinc-900 rounded-[2rem] p-8 border border-white/5 flex gap-6 items-center group hover:border-primary/30 transition"
+                >
                   <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
                     <img src={`/images/trainer-${i+1}.png`} className="w-full h-full object-cover grayscale" />
                   </div>
@@ -328,7 +458,7 @@ function SuccessStories() {
                       "Unbelievable results. The AI plans are perfectly tailored to my goals."
                     </p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -341,8 +471,13 @@ function SuccessStories() {
 function CTASection() {
   return (
     <section className="py-32 px-6">
-      <div className="mx-auto max-w-7xl bg-primary rounded-[4rem] p-16 md:p-32 text-center relative overflow-hidden group shadow-[0_50px_100px_rgba(var(--primary),0.2)]">
-        {/* Subtle pattern or texture could go here */}
+      <motion.div
+        initial={{ opacity: 0, y: 36, scale: 0.96 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+        viewport={sectionViewport}
+        transition={{ duration: 0.65, ease: easeSmooth }}
+        className="mx-auto max-w-7xl bg-primary rounded-[4rem] p-16 md:p-32 text-center relative overflow-hidden group shadow-[0_50px_100px_rgba(var(--primary),0.2)]"
+      >
         <div className="relative z-10">
           <h2 className="font-display text-5xl md:text-8xl font-black uppercase italic tracking-tighter text-black leading-none mb-12">
             Connect Engage<br />Transform
@@ -351,17 +486,17 @@ function CTASection() {
             Join the community of 140+ elite athletes transforming their lives.
           </p>
           <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4 max-w-2xl mx-auto bg-black/5 p-3 rounded-full backdrop-blur-sm border border-black/5">
-            <input 
-              type="email" 
-              placeholder="YOUR EMAIL ADDRESS" 
+            <input
+              type="email"
+              placeholder="YOUR EMAIL ADDRESS"
               className="bg-white px-10 py-6 rounded-full text-black placeholder:text-black/30 outline-none font-black uppercase tracking-[0.2em] text-[10px] flex-1"
             />
-            <button className="bg-black text-white px-12 py-6 rounded-full font-black uppercase tracking-[0.3em] italic text-[10px] hover:scale-105 transition-transform shadow-2xl">
+            <Link to="/signup" className="bg-black text-white px-12 py-6 rounded-full font-black uppercase tracking-[0.3em] italic text-[10px] hover:scale-105 transition-transform shadow-2xl grid place-items-center">
               JOIN NOW
-            </button>
+            </Link>
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

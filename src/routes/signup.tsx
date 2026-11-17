@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Dumbbell, ArrowRight, Mail, Lock, User } from "lucide-react";
@@ -7,8 +8,12 @@ import { signupFn, meFn } from "@/lib/server-fns";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/signup")({
-  beforeLoad: async () => {
-    const { user } = await meFn();
+  beforeLoad: async ({ context }) => {
+    const { user } = await context.queryClient.ensureQueryData({
+      queryKey: ["me"],
+      queryFn: () => meFn(),
+      staleTime: 5 * 60_000,
+    });
     if (user) throw redirect({ to: "/dashboard" });
   },
   component: SignupPage,
@@ -16,6 +21,7 @@ export const Route = createFileRoute("/signup")({
 
 function SignupPage() {
   const signup = useServerFn(signupFn);
+  const qc = useQueryClient();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   
@@ -49,6 +55,8 @@ function SignupPage() {
             setBusy(true);
             try {
               await signup({ data: { name: String(f.get("name")), email: String(f.get("email")), password: String(f.get("password")) } });
+              await qc.invalidateQueries({ queryKey: ["me"] });
+              qc.removeQueries({ queryKey: ["dashboard"] });
               toast.success("Welcome to the Elite, " + f.get("name") + "!");
               navigate({ to: "/dashboard" });
             } catch (err: any) { toast.error(err?.message || "Signup failed"); }

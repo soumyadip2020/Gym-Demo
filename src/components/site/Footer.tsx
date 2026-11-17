@@ -1,9 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { Dumbbell } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function Footer() {
   return (
-    <footer className="mt-32 border-t border-white/5 bg-black py-20 px-6">
+    <motion.footer
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: false, amount: 0.1 }}
+      transition={{ duration: 0.55 }}
+      className="mt-32 border-t border-white/5 bg-black py-20 px-6"
+    >
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-start gap-12">
           <div className="max-w-xs">
@@ -55,6 +62,6 @@ export function Footer() {
           © {new Date().getFullYear()} Fitness 365. All rights reserved. Designed for elite performers.
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }
