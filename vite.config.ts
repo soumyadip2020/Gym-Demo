@@ -1,4 +1,12 @@
+import { loadEnv } from "vite";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+
+const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
+for (const [key, value] of Object.entries(env)) {
+  if (!(key in process.env)) {
+    process.env[key] = value;
+  }
+}
 
 export default defineConfig({
   nitro: false,
