@@ -6,6 +6,13 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    ssr: {
+      noExternal: [
+        "@tanstack/react-router",
+        "@tanstack/router-core",
+        "@tanstack/history",
+      ],
+    },
     server: {
       host: "0.0.0.0",
       port: 3000,
