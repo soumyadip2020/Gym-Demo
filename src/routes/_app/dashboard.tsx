@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Activity, Apple, Calendar, Dumbbell, Flame, LineChart, ShieldCheck, TrendingUp, ArrowRight } from "lucide-react";
 import { dashboardFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 
@@ -10,7 +11,11 @@ export const Route = createFileRoute("/_app/dashboard")({ component: Dashboard }
 
 function Dashboard() {
   const fetchDash = useServerFn(dashboardFn);
-  const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: () => fetchDash() });
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: safeMemberQuery(() => fetchDash(), qc),
+  });
 
   if (isLoading || !data) {
     return (

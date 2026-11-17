@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, ShieldCheck, ArrowRight, Zap, CreditCard, Clock } from "lucide-react";
 import { dashboardFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 import { usePay } from "@/lib/use-pay";
 import { motion } from "framer-motion";
 
@@ -17,7 +18,8 @@ const PLANS = [
 
 function MembershipPage() {
   const fetchDash = useServerFn(dashboardFn);
-  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: () => fetchDash() });
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: safeMemberQuery(() => fetchDash(), qc) });
   const pay = usePay();
 
   return (
@@ -110,7 +112,7 @@ function MembershipPage() {
             </ul>
 
             <button
-              disabled={pay.isPending}
+              disabled={!data || pay.isPending}
               onClick={() => data && pay.mutate({ kind: "membership", plan: p.id, amount_inr: p.price, user: { name: data.user.name, email: data.user.email } })}
               className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] italic text-[10px] text-center transition-all duration-300 flex items-center justify-center gap-3 relative z-10 ${p.highlight ? "bg-primary text-black shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:scale-105" : "bg-white/5 text-white hover:bg-white/10 border border-white/10"}`}
             >

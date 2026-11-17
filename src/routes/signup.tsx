@@ -12,7 +12,7 @@ export const Route = createFileRoute("/signup")({
     const { user } = await context.queryClient.fetchQuery({
       queryKey: ["me"],
       queryFn: () => meFn(),
-      staleTime: 5 * 60_000,
+      staleTime: 0,
     });
     if (user) throw redirect({ to: "/dashboard" });
   },
@@ -57,6 +57,8 @@ function SignupPage() {
               const res = await signup({ data: { name: String(f.get("name")), email: String(f.get("email")), password: String(f.get("password")) } });
               qc.setQueryData(["me"], { user: res.user });
               qc.removeQueries({ queryKey: ["dashboard"] });
+              qc.removeQueries({ queryKey: ["plans"] });
+              qc.removeQueries({ queryKey: ["progress"] });
               toast.success("Welcome to the Elite, " + f.get("name") + "!");
               await navigate({ to: "/dashboard", replace: true });
             } catch (err: any) { toast.error(err?.message || "Signup failed"); }

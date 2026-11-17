@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Flame, Trophy, Calendar as CalIcon, Check, Zap, MapPin } from "lucide-react";
 import { checkInFn, dashboardFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/_app/check-in")({ component: CheckIn });
@@ -12,7 +13,7 @@ function CheckIn() {
   const fetchDash = useServerFn(dashboardFn);
   const checkIn = useServerFn(checkInFn);
   const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: () => fetchDash() });
+  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: safeMemberQuery(() => fetchDash(), qc) });
   
   if (!data) return (
     <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4">

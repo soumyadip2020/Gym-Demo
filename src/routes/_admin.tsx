@@ -73,10 +73,10 @@ function AdminLayout() {
   const handleLogout = async () => {
     await logout({});
     await qc.cancelQueries();
-    qc.clear();
     qc.setQueryData(["admin-me"], { admin: null });
     await router.invalidate();
     await navigate({ to: "/admin", replace: true });
+    qc.removeQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("admin-") && q.queryKey[0] !== "admin-me" });
   };
 
   return (

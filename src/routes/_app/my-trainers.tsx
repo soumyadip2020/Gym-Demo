@@ -1,17 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Star } from "lucide-react";
 import { TRAINERS } from "@/lib/trainers";
 import { dashboardFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 import { usePay } from "@/lib/use-pay";
 
 export const Route = createFileRoute("/_app/my-trainers")({ component: MyTrainers });
 
 function MyTrainers() {
   const fetchDash = useServerFn(dashboardFn);
-  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: () => fetchDash() });
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: safeMemberQuery(() => fetchDash(), qc) });
   const pay = usePay();
   const [pick, setPick] = useState<Record<string, "monthly"|"quarterly"|"annual">>({});
 

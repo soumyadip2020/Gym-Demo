@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Apple, Droplet, Sparkles, Activity, PieChart, Info, ArrowRight, Zap, Coffee, Sun, Sunset, Moon } from "lucide-react";
 import { generateDietFn, listPlansFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/_app/diet")({ component: DietPlanner });
@@ -12,7 +13,8 @@ export const Route = createFileRoute("/_app/diet")({ component: DietPlanner });
 function DietPlanner() {
   const generate = useServerFn(generateDietFn);
   const listPlans = useServerFn(listPlansFn);
-  const { data: plans, refetch } = useQuery({ queryKey: ["plans"], queryFn: () => listPlans() });
+  const qc = useQueryClient();
+  const { data: plans, refetch } = useQuery({ queryKey: ["plans"], queryFn: safeMemberQuery(() => listPlans(), qc) });
   const [form, setForm] = useState({ goal: "muscle_gain", height_cm: 175, weight_kg: 75, age: 28, veg: "veg", allergies: "" });
   
   const m = useMutation({

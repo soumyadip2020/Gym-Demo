@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Calendar, Dumbbell, Apple, LineChart, CreditCard, UserCog, LogOut, Menu, X } from "lucide-react";
 import { dashboardFn, listPlansFn, logoutFn, meFn, progressFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/_app")({
@@ -11,7 +12,7 @@ export const Route = createFileRoute("/_app")({
     const { user } = await context.queryClient.fetchQuery({
       queryKey: ["me"],
       queryFn: () => meFn(),
-      staleTime: 5 * 60_000,
+      staleTime: 15_000,
     });
     if (!user) throw redirect({ to: "/login" });
     return { user };
@@ -42,10 +43,11 @@ function AppShell() {
 
   // Warm dashboard section caches in the background so sidebar navigation is instant
   useEffect(() => {
-    void qc.prefetchQuery({ queryKey: ["dashboard"], queryFn: () => fetchDash() });
-    void qc.prefetchQuery({ queryKey: ["plans"], queryFn: () => fetchPlans() });
-    void qc.prefetchQuery({ queryKey: ["progress"], queryFn: () => fetchProg() });
-  }, [qc, fetchDash, fetchPlans, fetchProg]);
+    if (!user) return;
+    void qc.prefetchQuery({ queryKey: ["dashboard"], queryFn: safeMemberQuery(() => fetchDash(), qc) });
+    void qc.prefetchQuery({ queryKey: ["plans"], queryFn: safeMemberQuery(() => fetchPlans(), qc) });
+    void qc.prefetchQuery({ queryKey: ["progress"], queryFn: safeMemberQuery(() => fetchProg(), qc) });
+  }, [qc, fetchDash, fetchPlans, fetchProg, user]);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-primary selection:text-black flex flex-col md:flex-row overflow-hidden">
@@ -92,9 +94,9 @@ function AppShell() {
               onClick={async () => {
                 await logout({});
                 await qc.cancelQueries();
-                qc.clear();
                 qc.setQueryData(["me"], { user: null });
-                await navigate({ to: "/" });
+                await navigate({ to: "/", replace: true });
+                qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
               }} 
               className="w-full flex items-center justify-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic text-white/40 hover:text-red-500 hover:bg-red-500/5 transition-all"
             >

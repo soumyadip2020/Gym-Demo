@@ -12,7 +12,7 @@ export const Route = createFileRoute("/login")({
     const { user } = await context.queryClient.fetchQuery({
       queryKey: ["me"],
       queryFn: () => meFn(),
-      staleTime: 5 * 60_000,
+      staleTime: 0,
     });
     if (user) throw redirect({ to: "/dashboard" });
   },
@@ -57,6 +57,8 @@ function LoginPage() {
               const res = await login({ data: { email: String(f.get("email")), password: String(f.get("password")) } });
               qc.setQueryData(["me"], { user: res.user });
               qc.removeQueries({ queryKey: ["dashboard"] });
+              qc.removeQueries({ queryKey: ["plans"] });
+              qc.removeQueries({ queryKey: ["progress"] });
               toast.success("Welcome back, Elite Athlete!");
               await navigate({ to: "/dashboard", replace: true });
             } catch (err: any) { toast.error(err?.message || "Login failed"); }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { addProgressFn, progressFn } from "@/lib/server-fns";
+import { safeMemberQuery } from "@/lib/safe-query";
 
 export const Route = createFileRoute("/_app/progress")({ component: Progress });
 
@@ -12,7 +13,7 @@ function Progress() {
   const fetchProg = useServerFn(progressFn);
   const addProg = useServerFn(addProgressFn);
   const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["progress"], queryFn: () => fetchProg() });
+  const { data } = useQuery({ queryKey: ["progress"], queryFn: safeMemberQuery(() => fetchProg(), qc) });
   const [f, setF] = useState({ weight_kg: "", body_fat: "", muscle_mass: "", notes: "" });
   const m = useMutation({
     mutationFn: async () => addProg({ data: {
