@@ -251,13 +251,19 @@ function createMockSql(): SqlTag {
 }
 
 let _sql: SqlTag | null = null;
+let _mockSql: SqlTag | null = null;
 export function getSql(): SqlTag {
-  if (_sql) return _sql;
-  const url = process.env.DATABASE_URL || (import.meta as any).env?.DATABASE_URL || (import.meta as any).env?.VITE_DATABASE_URL;
+  const url = (
+    process.env.DATABASE_URL ||
+    (import.meta as any).env?.DATABASE_URL ||
+    (import.meta as any).env?.VITE_DATABASE_URL ||
+    ""
+  ).trim();
   if (!url) {
-    _sql = createMockSql();
-    return _sql;
+    if (!_mockSql) _mockSql = createMockSql();
+    return _mockSql;
   }
+  if (_sql) return _sql;
   _sql = neon(url) as unknown as SqlTag;
   return _sql;
 }
