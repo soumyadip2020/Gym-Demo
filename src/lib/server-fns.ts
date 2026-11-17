@@ -9,6 +9,7 @@ import {
   hashPassword,
   verifyPassword,
 } from "./auth.server";
+import { verifyRazorpaySignature } from "./admin-auth.server";
 
 // ---------- AUTH ----------
 export const meFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -33,10 +34,11 @@ export const signupFn = createServerFn({ method: "POST" })
     const hash = await hashPassword(data.password);
     const rows = (await sql`
       INSERT INTO users (email, password_hash, name) VALUES (${data.email.toLowerCase()}, ${hash}, ${data.name})
-      RETURNING id
+      RETURNING id, email, name, height_cm, weight_kg, age, gender
     `) as any[];
-    await createSession(rows[0].id);
-    return { ok: true };
+    const user = rows[0];
+    await createSession(user.id);
+    return { ok: true, user };
   });
 
 export const loginFn = createServerFn({ method: "POST" })
@@ -46,12 +48,16 @@ export const loginFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await ensureSchema();
     const sql = getSql();
-    const rows = (await sql`SELECT id, password_hash FROM users WHERE email = ${data.email.toLowerCase()} LIMIT 1`) as any[];
+    const rows = (await sql`
+      SELECT id, email, name, height_cm, weight_kg, age, gender, password_hash
+      FROM users WHERE email = ${data.email.toLowerCase()} LIMIT 1
+    `) as any[];
     if (!rows.length) throw new Error("Invalid credentials");
     const ok = await verifyPassword(data.password, rows[0].password_hash);
     if (!ok) throw new Error("Invalid credentials");
-    await createSession(rows[0].id);
-    return { ok: true };
+    const { password_hash: _ph, ...user } = rows[0];
+    await createSession(user.id);
+    return { ok: true, user };
   });
 
 export const logoutFn = createServerFn({ method: "POST" }).handler(async () => {
@@ -425,14 +431,16 @@ export const listPlansFn = createServerFn({ method: "GET" }).handler(async () =>
   return { workouts, diets };
 });
 
-// ---------- MEMBERSHIP / TRAINER (mock-purchase fallback if Razorpay isn't completed) ----------
+// ---------- MEMBERSHIP / TRAINER (with server-side Razorpay signature verification) ----------
 export const subscribeFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
         plan: z.enum(["trial", "monthly", "quarterly", "annual"]),
         amount_inr: z.number().min(0).max(200000),
+        razorpay_order_id: z.string().optional(),
         razorpay_payment_id: z.string().optional(),
+        razorpay_signature: z.string().optional(),
       })
       .parse(d),
   )
@@ -440,11 +448,66 @@ export const subscribeFn = createServerFn({ method: "POST" })
     const u = await getCurrentUser();
     if (!u) throw redirect({ to: "/login" });
     const sql = getSql();
-    const months = data.plan === "trial" ? 0 : data.plan === "monthly" ? 1 : data.plan === "quarterly" ? 3 : 12;
-    const days = data.plan === "trial" ? 7 : months * 30;
+
+    if (data.amount_inr > 0) {
+      const hasSecret = Boolean(process.env.RAZORPAY_KEY_SECRET);
+      if (hasSecret) {
+        if (!data.razorpay_order_id || !data.razorpay_payment_id || !data.razorpay_signature) {
+          throw new Error("Missing Razorpay payment signature details.");
+        }
+        const verified = verifyRazorpaySignature(
+          data.razorpay_order_id,
+          data.razorpay_payment_id,
+          data.razorpay_signature,
+        );
+        if (!verified) {
+          throw new Error("Payment verification failed. Signature mismatch.");
+        }
+      }
+      if (data.razorpay_payment_id) {
+        const dup = (await sql`
+          SELECT id FROM payments WHERE razorpay_payment_id = ${data.razorpay_payment_id} LIMIT 1
+        `) as any[];
+        if (dup.length) {
+          return { ok: true, duplicate: true };
+        }
+      }
+    }
+
+    const planRows = (await sql`
+      SELECT id, duration_days FROM membership_plans WHERE slug = ${data.plan} LIMIT 1
+    `) as any[];
+    const fallbackDays = data.plan === "trial" ? 7 : data.plan === "monthly" ? 30 : data.plan === "quarterly" ? 90 : 365;
+    const days = Number(planRows[0]?.duration_days || fallbackDays);
+    const planId = planRows[0]?.id ?? null;
     const ends = new Date(Date.now() + days * 86400000);
-    await sql`INSERT INTO memberships (user_id, plan, ends_at, amount_inr, razorpay_payment_id)
-      VALUES (${u.id}, ${data.plan}, ${ends.toISOString()}, ${data.amount_inr}, ${data.razorpay_payment_id ?? null})`;
+    const paymentStatus = data.amount_inr === 0 ? "free" : "paid";
+
+    const memRows = (await sql`
+      INSERT INTO memberships (user_id, plan, plan_id, ends_at, amount_inr, payment_status, razorpay_payment_id)
+      VALUES (${u.id}, ${data.plan}, ${planId}, ${ends.toISOString()}, ${data.amount_inr}, ${paymentStatus}, ${data.razorpay_payment_id ?? null})
+      RETURNING id
+    `) as any[];
+
+    if (data.amount_inr > 0) {
+      const txnId = data.razorpay_payment_id || `MEM-${memRows[0]?.id || Date.now()}`;
+      await sql`
+        INSERT INTO payments (user_id, membership_id, transaction_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount_inr, payment_method, purpose, status)
+        VALUES (
+          ${u.id},
+          ${memRows[0]?.id ?? null},
+          ${txnId},
+          ${data.razorpay_order_id ?? null},
+          ${data.razorpay_payment_id ?? null},
+          ${data.razorpay_signature ?? null},
+          ${data.amount_inr},
+          ${data.razorpay_payment_id ? "razorpay" : "manual"},
+          ${`Membership: ${data.plan}`},
+          'paid'
+        )
+        ON CONFLICT DO NOTHING
+      `;
+    }
     return { ok: true };
   });
 
@@ -455,7 +518,9 @@ export const bookTrainerFn = createServerFn({ method: "POST" })
         trainer_slug: z.string().min(1).max(80),
         plan: z.enum(["monthly", "quarterly", "annual"]),
         amount_inr: z.number().min(0).max(500000),
+        razorpay_order_id: z.string().optional(),
         razorpay_payment_id: z.string().optional(),
+        razorpay_signature: z.string().optional(),
       })
       .parse(d),
   )
@@ -463,10 +528,59 @@ export const bookTrainerFn = createServerFn({ method: "POST" })
     const u = await getCurrentUser();
     if (!u) throw redirect({ to: "/login" });
     const sql = getSql();
+
+    if (data.amount_inr > 0) {
+      const hasSecret = Boolean(process.env.RAZORPAY_KEY_SECRET);
+      if (hasSecret) {
+        if (!data.razorpay_order_id || !data.razorpay_payment_id || !data.razorpay_signature) {
+          throw new Error("Missing Razorpay payment signature details.");
+        }
+        const verified = verifyRazorpaySignature(
+          data.razorpay_order_id,
+          data.razorpay_payment_id,
+          data.razorpay_signature,
+        );
+        if (!verified) {
+          throw new Error("Trainer payment verification failed. Signature mismatch.");
+        }
+      }
+      if (data.razorpay_payment_id) {
+        const dup = (await sql`
+          SELECT id FROM payments WHERE razorpay_payment_id = ${data.razorpay_payment_id} LIMIT 1
+        `) as any[];
+        if (dup.length) {
+          return { ok: true, duplicate: true };
+        }
+      }
+    }
+
     const months = data.plan === "monthly" ? 1 : data.plan === "quarterly" ? 3 : 12;
     const ends = new Date(Date.now() + months * 30 * 86400000);
-    await sql`INSERT INTO trainer_bookings (user_id, trainer_slug, plan, ends_at, amount_inr, razorpay_payment_id)
-      VALUES (${u.id}, ${data.trainer_slug}, ${data.plan}, ${ends.toISOString()}, ${data.amount_inr}, ${data.razorpay_payment_id ?? null})`;
+    const bkRows = (await sql`
+      INSERT INTO trainer_bookings (user_id, trainer_slug, plan, ends_at, amount_inr, razorpay_payment_id)
+      VALUES (${u.id}, ${data.trainer_slug}, ${data.plan}, ${ends.toISOString()}, ${data.amount_inr}, ${data.razorpay_payment_id ?? null})
+      RETURNING id
+    `) as any[];
+
+    if (data.amount_inr > 0) {
+      const txnId = data.razorpay_payment_id || `TRN-${bkRows[0]?.id || Date.now()}`;
+      await sql`
+        INSERT INTO payments (user_id, trainer_booking_id, transaction_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount_inr, payment_method, purpose, status)
+        VALUES (
+          ${u.id},
+          ${bkRows[0]?.id ?? null},
+          ${txnId},
+          ${data.razorpay_order_id ?? null},
+          ${data.razorpay_payment_id ?? null},
+          ${data.razorpay_signature ?? null},
+          ${data.amount_inr},
+          ${data.razorpay_payment_id ? "razorpay" : "manual"},
+          ${`Trainer: ${data.trainer_slug} (${data.plan})`},
+          'paid'
+        )
+        ON CONFLICT DO NOTHING
+      `;
+    }
     return { ok: true };
   });
 
@@ -480,3 +594,24 @@ export const myBookingsFn = createServerFn({ method: "GET" }).handler(async () =
   ]);
   return { bookings, memberships };
 });
+
+export const submitContactFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        name: z.string().min(2).max(100),
+        email: z.string().email().max(200),
+        subject: z.string().max(200).optional(),
+        message: z.string().min(3).max(2000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await ensureSchema();
+    const sql = getSql();
+    await sql`
+      INSERT INTO contact_enquiries (name, email, subject, message, status)
+      VALUES (${data.name}, ${data.email}, ${data.subject ?? null}, ${data.message}, 'pending')
+    `;
+    return { ok: true };
+  });

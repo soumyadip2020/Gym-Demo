@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ context }) => {
-    const { user } = await context.queryClient.ensureQueryData({
+    const { user } = await context.queryClient.fetchQuery({
       queryKey: ["me"],
       queryFn: () => meFn(),
       staleTime: 5 * 60_000,
@@ -93,7 +93,8 @@ function AppShell() {
                 await logout({});
                 await qc.cancelQueries();
                 qc.clear();
-                navigate({ to: "/" });
+                qc.setQueryData(["me"], { user: null });
+                await navigate({ to: "/" });
               }} 
               className="w-full flex items-center justify-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic text-white/40 hover:text-red-500 hover:bg-red-500/5 transition-all"
             >

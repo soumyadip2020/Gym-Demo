@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { getCookie, setCookie, deleteCookie, getRequestProtocol } from "@tanstack/react-start/server";
+import { getCookie, setCookie, deleteCookie, getRequestProtocol, getRequestHeader } from "@tanstack/react-start/server";
 import { ensureSchema, getSql } from "./db.server";
 
 const COOKIE = "f365_session";
@@ -13,13 +13,24 @@ function randomToken() {
 function getCookieSecurity() {
   let isHttps = false;
   try {
-    isHttps = getRequestProtocol({ xForwardedProto: true }) === "https";
+    const proto = getRequestProtocol({ xForwardedProto: true });
+    const xfp = getRequestHeader("x-forwarded-proto") || "";
+    const origin = getRequestHeader("origin") || "";
+    const referer = getRequestHeader("referer") || "";
+    const forwarded = (getRequestHeader("forwarded") || "").toLowerCase();
+    isHttps =
+      proto === "https" ||
+      xfp.split(",")[0]?.trim().toLowerCase() === "https" ||
+      origin.startsWith("https://") ||
+      referer.startsWith("https://") ||
+      forwarded.includes("proto=https");
   } catch {
     isHttps = false;
   }
   return {
     sameSite: (isHttps ? "none" : "lax") as "none" | "lax",
     secure: isHttps,
+    ...(isHttps ? { partitioned: true } : {}),
   };
 }
 
@@ -36,13 +47,11 @@ export async function createSession(userId: number) {
   const token = randomToken();
   const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
   await sql`INSERT INTO sessions (token, user_id, expires_at) VALUES (${token}, ${userId}, ${expires.toISOString()})`;
-  const { sameSite, secure } = getCookieSecurity();
   setCookie(COOKIE, token, {
     httpOnly: true,
-    sameSite,
-    secure,
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
+    ...getCookieSecurity(),
   });
   return token;
 }
@@ -66,6 +75,5 @@ export async function destroySession() {
     const sql = getSql();
     await sql`DELETE FROM sessions WHERE token = ${token}`;
   }
-  const { sameSite, secure } = getCookieSecurity();
-  deleteCookie(COOKIE, { path: "/", sameSite, secure });
+  deleteCookie(COOKIE, { path: "/", ...getCookieSecurity() });
 }

@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/signup")({
   beforeLoad: async ({ context }) => {
-    const { user } = await context.queryClient.ensureQueryData({
+    const { user } = await context.queryClient.fetchQuery({
       queryKey: ["me"],
       queryFn: () => meFn(),
       staleTime: 5 * 60_000,
@@ -54,11 +54,11 @@ function SignupPage() {
             const f = new FormData(e.currentTarget);
             setBusy(true);
             try {
-              await signup({ data: { name: String(f.get("name")), email: String(f.get("email")), password: String(f.get("password")) } });
-              await qc.invalidateQueries({ queryKey: ["me"] });
+              const res = await signup({ data: { name: String(f.get("name")), email: String(f.get("email")), password: String(f.get("password")) } });
+              qc.setQueryData(["me"], { user: res.user });
               qc.removeQueries({ queryKey: ["dashboard"] });
               toast.success("Welcome to the Elite, " + f.get("name") + "!");
-              navigate({ to: "/dashboard" });
+              await navigate({ to: "/dashboard", replace: true });
             } catch (err: any) { toast.error(err?.message || "Signup failed"); }
             finally { setBusy(false); }
           }}

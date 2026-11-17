@@ -50,9 +50,26 @@ export function usePay() {
           handler: async (resp: any) => {
             try {
               if (args.kind === "membership") {
-                await subscribe({ data: { plan: args.plan as any, amount_inr: args.amount_inr, razorpay_payment_id: resp.razorpay_payment_id } });
+                await subscribe({
+                  data: {
+                    plan: args.plan as any,
+                    amount_inr: args.amount_inr,
+                    razorpay_order_id: resp.razorpay_order_id,
+                    razorpay_payment_id: resp.razorpay_payment_id,
+                    razorpay_signature: resp.razorpay_signature,
+                  },
+                });
               } else {
-                await book({ data: { trainer_slug: args.trainer_slug!, plan: args.plan as any, amount_inr: args.amount_inr, razorpay_payment_id: resp.razorpay_payment_id } });
+                await book({
+                  data: {
+                    trainer_slug: args.trainer_slug!,
+                    plan: args.plan as any,
+                    amount_inr: args.amount_inr,
+                    razorpay_order_id: resp.razorpay_order_id,
+                    razorpay_payment_id: resp.razorpay_payment_id,
+                    razorpay_signature: resp.razorpay_signature,
+                  },
+                });
               }
               resolve(resp);
             } catch (e) { reject(e); }

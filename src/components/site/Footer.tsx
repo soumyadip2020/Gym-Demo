@@ -43,6 +43,7 @@ export function Footer() {
             <div>
               <h4 className="text-white/20 mb-6">Support</h4>
               <ul className="space-y-4">
+                <li><Link to="/admin" className="hover:text-primary transition">Owner Portal</Link></li>
                 <li><a href="#" className="hover:text-primary transition">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-primary transition">Terms of Service</a></li>
                 <li><a href="#" className="hover:text-primary transition">Cookie Policy</a></li>

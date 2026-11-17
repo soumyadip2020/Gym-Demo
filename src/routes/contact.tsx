@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Mail, MapPin, Phone, ArrowRight, Smartphone, Globe } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
+import { submitContactFn } from "@/lib/server-fns";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/contact")({
@@ -15,6 +17,7 @@ export const Route = createFileRoute("/contact")({
 });
 
 function ContactPage() {
+  const submitContact = useServerFn(submitContactFn);
   const [busy, setBusy] = useState(false);
   return (
     <div className="min-h-screen bg-black selection:bg-primary selection:text-black">
@@ -75,14 +78,27 @@ function ContactPage() {
               </div>
 
               <form 
-                onSubmit={(e) => { 
+                onSubmit={async (e) => { 
                   e.preventDefault(); 
+                  const form = e.currentTarget;
+                  const f = new FormData(form);
                   setBusy(true); 
-                  setTimeout(() => { 
-                    setBusy(false); 
-                    toast.success("Query Received. Optimizing Response..."); 
-                    (e.target as HTMLFormElement).reset(); 
-                  }, 1200); 
+                  try {
+                    await submitContact({
+                      data: {
+                        name: String(f.get("name")),
+                        email: String(f.get("email")),
+                        subject: String(f.get("subject") || ""),
+                        message: String(f.get("message")),
+                      },
+                    });
+                    toast.success("Enquiry received. Our team will respond shortly.");
+                    form.reset();
+                  } catch (err: any) {
+                    toast.error(err?.message || "Failed to send enquiry");
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
                 className="grid gap-6 relative z-10"
               >

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Razorpay from "razorpay";
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth.server";
+import { getAdminSession } from "@/lib/admin-auth.server";
 
 const Body = z.object({ amount_inr: z.number().min(1).max(500000), notes: z.record(z.string(), z.string()).optional() });
 
@@ -8,6 +10,10 @@ export const Route = createFileRoute("/api/razorpay/order")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const [user, admin] = await Promise.all([getCurrentUser(), getAdminSession()]);
+        if (!user && !admin) {
+          return Response.json({ error: "Authentication required" }, { status: 401 });
+        }
         const id = process.env.RAZORPAY_KEY_ID;
         const secret = process.env.RAZORPAY_KEY_SECRET;
         if (!id || !secret) return Response.json({ error: "Razorpay not configured" }, { status: 500 });
