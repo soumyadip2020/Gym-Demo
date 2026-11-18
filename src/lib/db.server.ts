@@ -265,7 +265,10 @@ function createMockSql(): SqlTag {
   };
 }
 
-let _sql: SqlTag | null = null;
+const GLOBAL_SQL_KEY = "__FITNESS365_NEON_SQL__";
+const GLOBAL_SCHEMA_KEY = "__FITNESS365_SCHEMA_PROMISE__";
+const SCHEMA_VERSION = 2;
+
 let _mockSql: SqlTag | null = null;
 
 export function hasRealDatabase(): boolean {
@@ -290,9 +293,13 @@ export function getSql(): SqlTag {
     if (!_mockSql) _mockSql = createMockSql();
     return _mockSql;
   }
-  if (_sql) return _sql;
-  _sql = neon(url) as unknown as SqlTag;
-  return _sql;
+  const g = globalThis as unknown as Record<string, { url: string; sql: SqlTag } | undefined>;
+  if (g[GLOBAL_SQL_KEY]?.url === url) {
+    return g[GLOBAL_SQL_KEY]!.sql;
+  }
+  const sql = neon(url) as unknown as SqlTag;
+  g[GLOBAL_SQL_KEY] = { url, sql };
+  return sql;
 }
 
 const DEFAULT_PLANS = [
@@ -330,11 +337,23 @@ const DEFAULT_PLANS = [
   },
 ];
 
-let _initPromise: Promise<void> | null = null;
 export async function ensureSchema() {
-  if (_initPromise) return _initPromise;
-  _initPromise = (async () => {
+  const g = globalThis as unknown as Record<string, Promise<void> | null | undefined>;
+  if (g[GLOBAL_SCHEMA_KEY]) return g[GLOBAL_SCHEMA_KEY]!;
+  const p = (async () => {
     const sql = getSql();
+
+    // Fast path: 1 lightweight check instead of 70+ DDL/migration queries on every cold worker
+    if (hasRealDatabase()) {
+      try {
+        const ver = (await sql`SELECT schema_version FROM gym_settings WHERE id = 1 LIMIT 1`) as any[];
+        if (Number(ver[0]?.schema_version || 0) >= SCHEMA_VERSION) {
+          return;
+        }
+      } catch {
+        // Schema not initialized yet or schema_version column missing; run full migration below
+      }
+    }
 
     // Base tables
     await sql`CREATE TABLE IF NOT EXISTS users (
@@ -675,10 +694,15 @@ export async function ensureSchema() {
             AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.trainer_booking_id = tb.id)
           ON CONFLICT DO NOTHING`,
       ]);
+
+      await sql`ALTER TABLE gym_settings ADD COLUMN IF NOT EXISTS schema_version INT NOT NULL DEFAULT 0`;
+      await sql`UPDATE gym_settings SET schema_version = ${SCHEMA_VERSION} WHERE id = 1`;
     }
   })().catch((err) => {
-    _initPromise = null;
+    const g = globalThis as unknown as Record<string, Promise<void> | null | undefined>;
+    g[GLOBAL_SCHEMA_KEY] = null;
     throw err;
   });
-  return _initPromise;
+  g[GLOBAL_SCHEMA_KEY] = p;
+  return p;
 }

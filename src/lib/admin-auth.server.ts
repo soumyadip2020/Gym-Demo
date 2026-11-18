@@ -272,17 +272,25 @@ export async function getAdminSession(): Promise<AdminSessionUser | null> {
   if (!hasRealDatabase()) return null;
   const token = getCookie(ADMIN_COOKIE);
   if (!token) return null;
-  await ensureSchema();
-  const sql = getSql();
-  const rows = (await sql`
-    SELECT s.*, st.is_active AS staff_active
-    FROM admin_sessions s
-    LEFT JOIN gym_staff st ON st.id = s.staff_id
-    WHERE s.token = ${token}
-      AND s.revoked_at IS NULL
-      AND s.expires_at > NOW()
-    LIMIT 1
-  `) as any[];
+  const run = async () => {
+    const sql = getSql();
+    return (await sql`
+      SELECT s.*, st.is_active AS staff_active
+      FROM admin_sessions s
+      LEFT JOIN gym_staff st ON st.id = s.staff_id
+      WHERE s.token = ${token}
+        AND s.revoked_at IS NULL
+        AND s.expires_at > NOW()
+      LIMIT 1
+    `) as any[];
+  };
+  let rows: any[];
+  try {
+    rows = await run();
+  } catch {
+    await ensureSchema();
+    rows = await run();
+  }
   const row = rows[0];
   if (!row) return null;
   if (row.staff_id && row.staff_active === false) return null;

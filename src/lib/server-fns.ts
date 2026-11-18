@@ -115,7 +115,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     const k = d.toISOString().slice(0, 10);
     if (set.has(k)) streak++;
     else if (i > 0) break;
-    else if (!set.has(k)) {} // allow today missing
+    // allow today missing
   }
 
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -328,40 +328,51 @@ function buildFallbackDietPlan(data: {
 async function callLovableAI(system: string, prompt: string, fallback: () => any): Promise<any> {
   const lovableKey = process.env.LOVABLE_API_KEY;
   if (lovableKey) {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: system + "\nReturn ONLY valid JSON. No markdown." },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
-    if (res.status === 429) throw new Error("AI rate limited. Try again shortly.");
-    if (res.status === 402) throw new Error("AI credits exhausted. Add credits in Workspace settings.");
-    if (!res.ok) throw new Error(`AI error: ${res.status}`);
-    const json = await res.json();
-    return parseAiJson(json.choices?.[0]?.message?.content ?? "{}");
+    try {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: system + "\nReturn ONLY valid JSON. No markdown." },
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+      if (res.status === 429) throw new Error("AI rate limited. Try again shortly.");
+      if (res.status === 402) throw new Error("AI credits exhausted. Add credits in Workspace settings.");
+      if (res.ok) {
+        const json = await res.json();
+        return parseAiJson(json.choices?.[0]?.message?.content ?? "{}");
+      }
+    } catch (err: any) {
+      if (err?.message?.includes("AI ")) throw err;
+    }
   }
 
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${system}\nReturn ONLY valid JSON. No markdown.\n\n${prompt}` }] }],
-        }),
-      },
-    );
-    if (res.ok) {
-      const json = await res.json();
-      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return parseAiJson(text);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${system}\nReturn ONLY valid JSON. No markdown.\n\n${prompt}` }] }],
+          }),
+        },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return parseAiJson(text);
+      }
+    } catch {
+      // Fall back to deterministic curated plan if external AI times out
     }
   }
 

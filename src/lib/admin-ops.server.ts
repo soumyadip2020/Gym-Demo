@@ -33,11 +33,11 @@ export async function getGymSettings() {
 export async function getAdminOverview(admin: AdminSessionUser) {
   await ensureSchema();
   const sql = getSql();
-  const settings = await getGymSettings();
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
   const [
+    settingsRows,
     memberStats,
     todayCheckIns,
     currentlyInside,
@@ -58,6 +58,7 @@ export async function getAdminOverview(admin: AdminSessionUser) {
     absentRows,
     enquiriesList,
   ] = await Promise.all([
+    sql`SELECT * FROM gym_settings WHERE id = 1 LIMIT 1` as Promise<any[]>,
     sql`
       SELECT
         COUNT(*) FILTER (WHERE u.status != 'archived')::int AS total_members,
@@ -86,7 +87,7 @@ export async function getAdminOverview(admin: AdminSessionUser) {
       WHERE u.status != 'archived'
         AND m.status = 'active'
         AND m.ends_at >= NOW()
-        AND m.ends_at <= NOW() + make_interval(days => ${Number(settings.expiry_alert_days || 7)})
+        AND m.ends_at <= NOW() + make_interval(days => COALESCE((SELECT expiry_alert_days FROM gym_settings WHERE id = 1), 7))
       ORDER BY m.ends_at ASC
       LIMIT 30
     ` as Promise<any[]>,
@@ -177,13 +178,26 @@ export async function getAdminOverview(admin: AdminSessionUser) {
       WHERE u.status != 'archived'
         AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id AND m.status = 'active' AND m.ends_at > NOW())
       GROUP BY u.id
-      HAVING COALESCE((CURRENT_DATE - MAX(c.day)), (CURRENT_DATE - u.created_at::date)) >= ${Number(settings.early_warning_days || 3)}
+      HAVING COALESCE((CURRENT_DATE - MAX(c.day)), (CURRENT_DATE - u.created_at::date)) >= COALESCE((SELECT early_warning_days FROM gym_settings WHERE id = 1), 3)
       ORDER BY days_absent DESC
       LIMIT 10
     ` as Promise<any[]>,
     sql`SELECT * FROM contact_enquiries ORDER BY created_at DESC LIMIT 20` as Promise<any[]>,
   ]);
 
+  const settings = settingsRows[0] ?? {
+    id: 1,
+    gym_name: "Fitness 365",
+    early_warning_days: 3,
+    inactive_days: 5,
+    high_priority_days: 7,
+    critical_days: 14,
+    expiry_alert_days: 7,
+    whatsapp_template:
+      "Hey {name}! We haven't seen you at the gym lately. Hope everything is going well. We would love to see you back. Let us know if you need any help with your fitness journey!",
+    renewal_template:
+      "Hi {name}, your {plan} membership at Fitness 365 expires on {expiry}. Renew now to keep your streak going!",
+  };
   const totalMembers = Number(memberStats[0]?.total_members || 0);
   const activeMembers = Number(memberStats[0]?.active_members || 0);
   const inactiveMembers = Math.max(0, totalMembers - activeMembers);

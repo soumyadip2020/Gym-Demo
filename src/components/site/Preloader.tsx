@@ -3,29 +3,40 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Dumbbell } from "lucide-react";
 
 export function Preloader() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem("f365_preloaded")) return;
+      sessionStorage.setItem("f365_preloaded", "1");
+    } catch {
+      return;
+    }
+
+    setVisible(true);
     const start = performance.now();
-    const duration = 1050;
+    const duration = 520;
     let rafId = 0;
+    let hideTimer = 0;
 
     const tick = (now: number) => {
       const elapsed = now - start;
       const t = Math.min(1, elapsed / duration);
-      // Ease out cubic for crisp acceleration -> precision settle
       const eased = 1 - Math.pow(1 - t, 3);
       setProgress(Math.round(eased * 100));
       if (t < 1) {
         rafId = requestAnimationFrame(tick);
       } else {
-        setTimeout(() => setVisible(false), 160);
+        hideTimer = window.setTimeout(() => setVisible(false), 80);
       }
     };
 
     rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(hideTimer);
+    };
   }, []);
 
   return (
@@ -36,9 +47,9 @@ export function Preloader() {
           initial={{ y: 0, opacity: 1 }}
           exit={{
             y: "-100%",
-            transition: { duration: 0.65, ease: [0.76, 0, 0.24, 1] },
+            transition: { duration: 0.35, ease: [0.76, 0, 0.24, 1] },
           }}
-          className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden select-none"
+          className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden select-none pointer-events-none"
         >
           {/* Ambient glow & grid */}
           <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />

@@ -34,6 +34,20 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "@tanstack/react-query",
+        "@tanstack/react-router",
+        "framer-motion",
+        "lucide-react",
+        "recharts",
+        "sonner",
+        "clsx",
+        "tailwind-merge",
+      ],
+    },
     ssr: {
       noExternal: [
         "@tanstack/react-router",

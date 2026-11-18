@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_admin")({
     const { admin } = await context.queryClient.fetchQuery({
       queryKey: ["admin-me"],
       queryFn: () => adminMeFn(),
-      staleTime: 60_000,
+      staleTime: 5 * 60_000,
     });
     const isAdminRoot = location.pathname === "/admin" || location.pathname === "/admin/";
     if (!admin && !isAdminRoot) {

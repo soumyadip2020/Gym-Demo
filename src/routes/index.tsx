@@ -192,7 +192,7 @@ function InspiredSection() {
             className="relative"
           >
             <div className="absolute -inset-4 border-2 border-primary/20 rounded-3xl" />
-            <img src="/images/inspired.png" alt="Inspiration" className="rounded-2xl grayscale hover:grayscale-0 transition-all duration-700 relative z-10" />
+            <img src="/images/inspired.png" alt="Inspiration" loading="lazy" decoding="async" className="rounded-2xl grayscale hover:grayscale-0 transition-all duration-700 relative z-10" />
           </motion.div>
         </div>
       </div>
@@ -283,7 +283,7 @@ function WorkoutGrid() {
               transition={{ duration: 0.55, delay: (i % 3) * 0.08, ease: easeSmooth }}
               className="group relative overflow-hidden rounded-[2rem]"
             >
-              <img src={w.img} alt={w.title} className="w-full aspect-[4/5] object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-110" />
+              <img src={w.img} alt={w.title} loading="lazy" decoding="async" className="w-full aspect-[4/5] object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
               <div className="absolute bottom-8 left-8 text-left">
                 <h3 className="text-2xl font-black uppercase italic tracking-tight group-hover:text-primary transition-colors">{w.title}</h3>
@@ -318,7 +318,7 @@ function ExperienceSection() {
             transition={{ duration: 0.6, ease: easeSmooth }}
             className="relative group overflow-hidden rounded-[3rem] aspect-[16/10] bg-zinc-900 border border-white/5"
           >
-            <img src="/images/workout-1.png" className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover:opacity-60 transition duration-700" />
+            <img src="/images/workout-1.png" alt="Advanced Training" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover:opacity-60 transition duration-700" />
             <div className="relative p-12 text-left h-full flex flex-col justify-between">
               <div>
                 <h3 className="text-3xl font-black uppercase italic text-primary">Advanced Training</h3>
@@ -338,7 +338,7 @@ function ExperienceSection() {
             transition={{ duration: 0.6, delay: 0.1, ease: easeSmooth }}
             className="relative group overflow-hidden rounded-[3rem] aspect-[16/10] bg-zinc-900 border border-white/5"
           >
-            <img src="/images/workout-2.png" className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover:opacity-60 transition duration-700" />
+            <img src="/images/workout-2.png" alt="Elite Community" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover grayscale opacity-30 group-hover:opacity-60 transition duration-700" />
             <div className="relative p-12 text-left h-full flex flex-col justify-between">
               <div>
                 <h3 className="text-3xl font-black uppercase italic text-primary">Elite Community</h3>
@@ -388,7 +388,7 @@ function TrainersSection() {
               className="group text-left"
             >
               <div className="relative overflow-hidden rounded-[2.5rem] aspect-[4/5] bg-zinc-900">
-                <img src={t.img} alt={t.name} className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700" />
+                <img src={t.img} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700" />
                 <div className="absolute inset-0 border-[12px] border-black/50 pointer-events-none" />
               </div>
               <h3 className="mt-8 text-2xl font-black uppercase italic tracking-tight">{t.name}</h3>
@@ -425,7 +425,7 @@ function SuccessStories() {
               transition={{ duration: 0.65, ease: easeSmooth }}
               className="lg:col-span-7 relative h-[600px] rounded-[3rem] overflow-hidden group"
             >
-              <img src="/images/success.png" className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 transition-all duration-1000" />
+              <img src="/images/success.png" alt="Success Story" loading="lazy" decoding="async" className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 transition-all duration-1000" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
               <div className="absolute bottom-12 left-12 right-12">
                 <div className="flex gap-1 text-primary mb-4">
@@ -448,7 +448,7 @@ function SuccessStories() {
                   className="bg-zinc-900 rounded-[2rem] p-8 border border-white/5 flex gap-6 items-center group hover:border-primary/30 transition"
                 >
                   <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
-                    <img src={`/images/trainer-${i+1}.png`} className="w-full h-full object-cover grayscale" />
+                    <img src={`/images/trainer-${i+1}.png`} alt="Member Coach" loading="lazy" decoding="async" className="w-full h-full object-cover grayscale" />
                   </div>
                   <div>
                     <div className="flex gap-1 text-primary mb-2">

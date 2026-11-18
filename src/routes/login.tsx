@@ -12,7 +12,7 @@ export const Route = createFileRoute("/login")({
     const { user } = await context.queryClient.fetchQuery({
       queryKey: ["me"],
       queryFn: () => meFn(),
-      staleTime: 0,
+      staleTime: 30_000,
     });
     if (user) throw redirect({ to: "/dashboard" });
   },

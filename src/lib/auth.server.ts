@@ -59,14 +59,22 @@ export async function createSession(userId: number) {
 export async function getCurrentUser() {
   const token = getCookie(COOKIE);
   if (!token) return null;
-  await ensureSchema();
-  const sql = getSql();
-  const rows = (await sql`
-    SELECT u.id, u.email, u.name, u.height_cm, u.weight_kg, u.age, u.gender
-    FROM sessions s JOIN users u ON u.id = s.user_id
-    WHERE s.token = ${token} AND s.expires_at > NOW() LIMIT 1
-  `) as any[];
-  return rows[0] ?? null;
+  const run = async () => {
+    const sql = getSql();
+    return (await sql`
+      SELECT u.id, u.email, u.name, u.height_cm, u.weight_kg, u.age, u.gender
+      FROM sessions s JOIN users u ON u.id = s.user_id
+      WHERE s.token = ${token} AND s.expires_at > NOW() LIMIT 1
+    `) as any[];
+  };
+  try {
+    const rows = await run();
+    return rows[0] ?? null;
+  } catch {
+    await ensureSchema();
+    const rows = await run();
+    return rows[0] ?? null;
+  }
 }
 
 export async function destroySession() {
